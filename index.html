@@ -3,119 +3,38 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>大頭照批次智慧裁切系統</title>
-  <!-- 引入 JSZip 用於多圖批次打包下載 -->
+  <title>大頭照客戶批次智慧管理裁切系統</title>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
   <style>
     :root {
       --primary: #2563eb;
       --primary-hover: #1d4ed8;
+      --danger: #ef4444;
+      --danger-hover: #dc2626;
       --bg: #f8fafc;
       --card: #ffffff;
+      --border: #e2e8f0;
       --text: #0f172a;
       --text-sub: #64748b;
-      --border: #e2e8f0;
     }
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body {
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-      background-color: var(--bg);
+      background: var(--bg);
       color: var(--text);
-      line-height: 1.5;
       padding: 24px 16px;
     }
-    .container {
-      max-width: 960px;
-      margin: 0 auto;
-    }
+    .container { max-width: 1100px; margin: 0 auto; }
     header {
-      text-align: center;
-      margin-bottom: 28px;
-    }
-    header h1 {
-      font-size: 26px;
-      font-weight: 700;
-      color: var(--text);
-      margin-bottom: 8px;
-    }
-    header p {
-      color: var(--text-sub);
-      font-size: 14px;
-    }
-    .card {
-      background: var(--card);
-      border-radius: 12px;
-      padding: 24px;
-      border: 1px solid var(--border);
-      box-shadow: 0 1px 3px rgba(0,0,0,0.05);
-      margin-bottom: 24px;
-    }
-    .settings-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-      gap: 16px;
-      margin-bottom: 20px;
-    }
-    .form-group label {
-      display: block;
-      font-size: 13px;
-      font-weight: 600;
-      margin-bottom: 6px;
-      color: #334155;
-    }
-    .form-group select, .form-group input {
-      width: 100%;
-      padding: 8px 12px;
-      border-radius: 6px;
-      border: 1px solid var(--border);
-      font-size: 14px;
-      outline: none;
-    }
-    .form-group select:focus, .form-group input:focus {
-      border-color: var(--primary);
-    }
-    .upload-zone {
-      border: 2px dashed #cbd5e1;
-      border-radius: 10px;
-      padding: 36px 20px;
-      text-align: center;
-      cursor: pointer;
-      background-color: #fafafa;
-      transition: all 0.2s;
-    }
-    .upload-zone:hover {
-      border-color: var(--primary);
-      background-color: #f0f7ff;
-    }
-    .upload-icon {
-      font-size: 36px;
-      margin-bottom: 8px;
-    }
-    .progress-container {
-      margin-top: 20px;
-      display: none;
-    }
-    .progress-bar-bg {
-      width: 100%;
-      height: 10px;
-      background-color: var(--border);
-      border-radius: 999px;
-      overflow: hidden;
-      margin-top: 8px;
-    }
-    .progress-bar {
-      height: 100%;
-      width: 0%;
-      background-color: var(--primary);
-      transition: width 0.15s ease;
-    }
-    .gallery-header {
       display: flex;
       justify-content: space-between;
       align-items: center;
-      margin-bottom: 16px;
+      margin-bottom: 24px;
+      flex-wrap: wrap;
+      gap: 12px;
     }
+    h1 { font-size: 24px; font-weight: 700; }
     .btn {
       padding: 8px 16px;
       border-radius: 6px;
@@ -123,257 +42,190 @@
       font-weight: 600;
       border: none;
       cursor: pointer;
-      background: var(--primary);
-      color: #fff;
       display: inline-flex;
       align-items: center;
       gap: 6px;
-      transition: background 0.2s;
+      transition: all 0.2s;
     }
-    .btn:hover { background: var(--primary-hover); }
-    .btn:disabled { background: #94a3b8; cursor: not-allowed; }
-    .grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
-      gap: 12px;
-    }
-    .preview-card {
+    .btn-primary { background: var(--primary); color: #fff; }
+    .btn-primary:hover { background: var(--primary-hover); }
+    .btn-danger { background: var(--danger); color: #fff; }
+    .btn-danger:hover { background: var(--danger-hover); }
+    .btn-outline { background: #fff; border: 1px solid var(--border); color: var(--text); }
+    .btn-outline:hover { background: #f1f5f9; }
+    .btn:disabled { background: #cbd5e1; cursor: not-allowed; }
+
+    /* 控制面板區 */
+    .dashboard-panel {
+      background: var(--card);
       border: 1px solid var(--border);
-      border-radius: 8px;
-      padding: 8px;
-      background: #fff;
-      text-align: center;
+      border-radius: 12px;
+      padding: 20px;
+      margin-bottom: 24px;
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 16px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.04);
     }
-    .preview-card img {
+    .field-group label {
+      display: block;
+      font-size: 13px;
+      font-weight: 600;
+      margin-bottom: 6px;
+      color: #334155;
+    }
+    .field-group input, .field-group select {
       width: 100%;
-      aspect-ratio: 35 / 45;
-      object-fit: cover;
-      border-radius: 4px;
-      background: #eee;
+      padding: 8px 12px;
+      border-radius: 6px;
+      border: 1px solid var(--border);
+      font-size: 14px;
     }
-    .preview-name {
-      font-size: 11px;
-      color: var(--text-sub);
-      margin-top: 6px;
-      white-space: nowrap;
+
+    /* 批次上傳區 */
+    .dropzone {
+      border: 2px dashed #94a3b8;
+      background: #ffffff;
+      border-radius: 12px;
+      padding: 30px;
+      text-align: center;
+      cursor: pointer;
+      margin-bottom: 24px;
+      transition: all 0.2s;
+    }
+    .dropzone:hover { border-color: var(--primary); background: #f0f7ff; }
+
+    /* 客戶卡片列表 */
+    .client-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+      gap: 16px;
+    }
+    .client-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 16px;
+      display: flex;
+      gap: 16px;
+      position: relative;
+      box-shadow: 0 1px 2px rgba(0,0,0,0.03);
+    }
+    .client-thumb-box {
+      width: 110px;
+      height: 140px;
+      background: #f1f5f9;
+      border-radius: 6px;
       overflow: hidden;
-      text-overflow: ellipsis;
+      flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border: 1px solid var(--border);
+      cursor: pointer;
+      position: relative;
+    }
+    .client-thumb-box img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+    .thumb-hint {
+      position: absolute;
+      bottom: 0;
+      width: 100%;
+      background: rgba(0,0,0,0.6);
+      color: #fff;
+      font-size: 10px;
+      text-align: center;
+      padding: 2px 0;
+    }
+    .client-info {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+    }
+    .client-name-input {
+      font-weight: 700;
+      font-size: 16px;
+      border: 1px solid transparent;
+      padding: 2px 4px;
+      border-radius: 4px;
+      width: 100%;
+      outline: none;
+    }
+    .client-name-input:focus { border-color: var(--primary); background: #f8fafc; }
+    .client-meta {
+      font-size: 12px;
+      color: var(--text-sub);
+      margin: 4px 0;
+    }
+    .card-actions {
+      display: flex;
+      gap: 6px;
+      margin-top: 8px;
+    }
+
+    /* 彈出視窗（微調裁切器） */
+    .modal-backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.7);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 999;
+      padding: 20px;
+    }
+    .modal-box {
+      background: #fff;
+      border-radius: 12px;
+      max-width: 800px;
+      width: 100%;
+      max-height: 90vh;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+    .modal-header {
+      padding: 16px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .modal-body {
+      padding: 16px;
+      overflow: auto;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      background: #1e293b;
+    }
+    .editor-canvas-wrap {
+      position: relative;
+      max-width: 100%;
+      user-select: none;
+    }
+    .modal-footer {
+      padding: 16px;
+      border-top: 1px solid var(--border);
+      display: flex;
+      justify-content: flex-end;
+      gap: 10px;
+      background: #fff;
     }
   </style>
 </head>
 <body>
   <div class="container">
     <header>
-      <h1>📸 大頭照批次智慧裁切系統</h1>
-      <p>支援同時上傳數十至數百張照片，純前端秒級處理，絕不卡死、隱私無虞</p>
-    </header>
-
-    <div class="card">
-      <div class="settings-grid">
-        <div class="form-group">
-          <label>大頭照規格</label>
-          <select id="specSelect">
-            <option value="2inch" selected>標準 2 吋 (護照/身分證 3.5 × 4.5 cm)</option>
-            <option value="1inch">標準 1 吋 (證照/駕照 2.8 × 3.5 cm)</option>
-            <option value="square">正方形 1:1 (美簽 5 × 5 cm)</option>
-          </select>
-        </div>
-        <div class="form-group">
-          <label>頭部位置重心預設</label>
-          <select id="cropFocus">
-            <option value="upper" selected>上半部特寫（人像最佳）</option>
-            <option value="center">正中央對齊</option>
-          </select>
-        </div>
-        <div class="form-group">
-          <label>輸出畫質格式</label>
-          <select id="formatSelect">
-            <option value="image/jpeg" selected>JPEG (高清晰 / 體積小)</option>
-            <option value="image/png">PNG (無損品質)</option>
-          </select>
-        </div>
+      <div>
+        <h1>👥 客戶大頭照智慧裁切管理系統</h1>
+        <p style="color: #64748b; font-size: 13px;">支援多客戶批次處理、自訂尺寸、單張自由微調裁切、ZIP 打包下載</p>
       </div>
-
-      <div class="upload-zone" id="dropZone" onclick="document.getElementById('fileInput').click()">
-        <div class="upload-icon">📁</div>
-        <h3>點擊選取或拖曳多張照片至此處</h3>
-        <p style="font-size: 13px; color: #64748b; margin-top: 4px;">支援 JPG、PNG、WebP，可一口氣選取數百張</p>
-        <input type="file" id="fileInput" multiple accept="image/*" style="display: none;">
+      <div style="display: flex; gap: 8px;">
+        <button class="btn btn-outline" onclick="addNewClientManual()">➕ 手動新增客戶</button>
+        <button class="btn btn-primary" id="zipBtn" onclick="exportAllZip()">📦 打包全部客戶 (ZIP)</button>
       </div>
-
-      <div class="progress-container" id="progressBox">
-        <div style="display: flex; justify-content: space-between; font-size: 13px;">
-          <span id="progressText">處理中...</span>
-          <span id="progressPercent">0%</span>
-        </div>
-        <div class="progress-bar-bg">
-          <div class="progress-bar" id="progressBar"></div>
-        </div>
-      </div>
-    </div>
-
-    <div class="card" id="resultCard" style="display: none;">
-      <div class="gallery-header">
-        <h3>已完成裁切預覽 (<span id="countSpan">0</span> 張)</h3>
-        <button class="btn" id="downloadZipBtn" onclick="downloadAllZip()">
-          📦 一鍵打包下載全部 ZIP
-        </button>
-      </div>
-      <div class="grid" id="resultGrid"></div>
-    </div>
-  </div>
-
-  <script>
-    const fileInput = document.getElementById('fileInput');
-    const dropZone = document.getElementById('dropZone');
-    const progressBox = document.getElementById('progressBox');
-    const progressBar = document.getElementById('progressBar');
-    const progressText = document.getElementById('progressText');
-    const progressPercent = document.getElementById('progressPercent');
-    const resultCard = document.getElementById('resultCard');
-    const resultGrid = document.getElementById('resultGrid');
-    const countSpan = document.getElementById('countSpan');
-    const downloadZipBtn = document.getElementById('downloadZipBtn');
-
-    let processedBlobs = [];
-
-    // 拖曳上傳支援
-    ['dragenter', 'dragover'].forEach(name => {
-      dropZone.addEventListener(name, (e) => { e.preventDefault(); dropZone.style.borderColor = '#2563eb'; });
-    });
-    ['dragleave', 'drop'].forEach(name => {
-      dropZone.addEventListener(name, (e) => { e.preventDefault(); dropZone.style.borderColor = '#cbd5e1'; });
-    });
-    dropZone.addEventListener('drop', (e) => {
-      const files = Array.from(e.dataTransfer.files).filter(f => f.type.startsWith('image/'));
-      if (files.length > 0) processQueue(files);
-    });
-    fileInput.addEventListener('change', (e) => {
-      const files = Array.from(e.target.files);
-      if (files.length > 0) processQueue(files);
-    });
-
-    // 核心隊列處理引擎（保證幾百張也不會塞爆記憶體）
-    async function processQueue(files) {
-      processedBlobs = [];
-      resultGrid.innerHTML = '';
-      resultCard.style.display = 'block';
-      progressBox.style.display = 'block';
-      downloadZipBtn.disabled = true;
-
-      const spec = document.getElementById('specSelect').value;
-      const focus = document.getElementById('cropFocus').value;
-      const format = document.getElementById('formatSelect').value;
-
-      // 設定輸出寬高尺寸比例
-      let targetW = 413, targetH = 531; // 2 吋 (3.5x4.5cm @ 300DPI)
-      if (spec === '1inch') { targetW = 330; targetH = 413; }
-      else if (spec === 'square') { targetW = 600; targetH = 600; }
-
-      const total = files.length;
-      for (let i = 0; i < total; i++) {
-        const file = files[i];
-        progressText.innerText = `正在處理第 ${i + 1} / ${total} 張：${file.name}`;
-        const pct = Math.round(((i + 1) / total) * 100);
-        progressBar.style.width = pct + '%';
-        progressPercent.innerText = pct + '%';
-
-        try {
-          const blob = await cropSingleImage(file, targetW, targetH, focus, format);
-          processedBlobs.push({ name: file.name, blob: blob });
-          appendPreview(blob, file.name);
-          countSpan.innerText = processedBlobs.length;
-        } catch (err) {
-          console.error("處理失敗:", file.name, err);
-        }
-        // 給予瀏覽器微小時間片，釋放記憶體及更新 UI
-        await new Promise(r => setTimeout(r, 20));
-      }
-
-      progressText.innerText = `全部處理完成！共 ${processedBlobs.length} 張。`;
-      downloadZipBtn.disabled = false;
-      fileInput.value = '';
-    }
-
-    // 單圖高畫質縮放裁切
-    function cropSingleImage(file, targetW, targetH, focus, mimeType) {
-      return new Promise((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = (e) => {
-          const img = new Image();
-          img.onload = () => {
-            const canvas = document.createElement('canvas');
-            canvas.width = targetW;
-            canvas.height = targetH;
-            const ctx = canvas.getContext('2d');
-
-            const imgRatio = img.width / img.height;
-            const targetRatio = targetW / targetH;
-            let srcX, srcY, srcW, srcH;
-
-            if (imgRatio > targetRatio) {
-              // 圖片太寬，左右切除
-              srcH = img.height;
-              srcW = img.height * targetRatio;
-              srcX = (img.width - srcW) / 2;
-              srcY = 0;
-            } else {
-              // 圖片太高，依照重心設定裁切
-              srcW = img.width;
-              srcH = img.width / targetRatio;
-              srcX = 0;
-              if (focus === 'upper') {
-                srcY = (img.height - srcH) * 0.2; // 稍微偏上方留出頭頂
-              } else {
-                srcY = (img.height - srcH) / 2;
-              }
-            }
-
-            ctx.drawImage(img, srcX, srcY, srcW, srcH, 0, 0, targetW, targetH);
-            canvas.toBlob((blob) => {
-              // 釋放記憶體
-              img.src = '';
-              resolve(blob);
-            }, mimeType, 0.95);
-          };
-          img.onerror = reject;
-          img.src = e.target.result;
-        };
-        reader.onerror = reject;
-        reader.readAsDataURL(file);
-      });
-    }
-
-    function appendPreview(blob, filename) {
-      const url = URL.createObjectURL(blob);
-      const card = document.createElement('div');
-      card.className = 'preview-card';
-      card.innerHTML = `
-        <img src="${url}">
-        <div class="preview-name" title="${filename}">${filename}</div>
-      `;
-      resultGrid.appendChild(card);
-    }
-
-    async function downloadAllZip() {
-      if (processedBlobs.length === 0) return;
-      downloadZipBtn.disabled = true;
-      downloadZipBtn.innerText = '正在打包 ZIP...';
-
-      const zip = new JSZip();
-      const ext = document.getElementById('formatSelect').value === 'image/png' ? '.png' : '.jpg';
-
-      processedBlobs.forEach((item, index) => {
-        const baseName = item.name.substring(0, item.name.lastIndexOf('.')) || `photo_${index+1}`;
-        zip.file(`${baseName}_cropped${ext}`, item.blob);
-      });
-
-      const content = await zip.generateAsync({ type: 'blob' });
-      saveAs(content, 'cropped_id_photos.zip');
-
-      downloadZipBtn.disabled = false;
-      downloadZipBtn.innerText = '📦 一鍵打包下載全部 ZIP';
-    }
-  </script>
-</body>
-</html>
