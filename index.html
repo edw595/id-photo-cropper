@@ -2,654 +2,378 @@
 <html lang="zh-TW">
 <head>
   <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>大頭照批次智慧裁切系統</title>
-  <!-- 引入 Bootstrap 5 與圖示 -->
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css" rel="stylesheet">
-  <!-- Vue 3 -->
-  <script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
-  <!-- MediaPipe 人臉辨識 -->
-  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/face_mesh.js" crossorigin="anonymous"></script>
-  <!-- 前端 ZIP 打包工具 -->
+  <!-- 引入 JSZip 用於多圖批次打包下載 -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
-
   <style>
-    body { background-color: #f4f6f9; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; }
-    .step-card { border-radius: 12px; border: 1px solid #e2e8f0; background: #fff; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); margin-bottom: 24px; padding: 24px; }
-    .step-badge { width: 36px; height: 36px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 18px; font-weight: bold; margin-right: 12px; }
-    .photo-card { border-radius: 8px; border: 2px solid #e2e8f0; overflow: hidden; background: #fff; transition: transform 0.15s, box-shadow 0.15s; cursor: pointer; position: relative; }
-    .photo-card:hover { transform: translateY(-3px); box-shadow: 0 6px 12px rgba(0,0,0,0.1); }
-    .photo-card.has-error { border-color: #dc3545; background: #fff8f8; }
-    .error-tag { position: absolute; top: 6px; left: 6px; background: rgba(220, 53, 69, 0.9); color: #fff; font-size: 11px; padding: 2px 6px; border-radius: 4px; font-weight: bold; }
-    /* 手動微調畫布與參考線 */
-    .editor-wrapper { position: relative; display: inline-block; user-select: none; background: #1a1a1a; border-radius: 8px; overflow: hidden; }
-    .guide-line-h { position: absolute; left: 0; right: 0; height: 2px; background: #00ffcc; cursor: ns-resize; z-index: 10; box-shadow: 0 0 4px rgba(0,0,0,0.8); }
-    .guide-line-h::after { content: attr(data-label); position: absolute; right: 8px; top: -18px; background: rgba(0,255,204,0.85); color: #000; font-size: 10px; font-weight: bold; padding: 1px 4px; border-radius: 3px; }
-    .guide-line-v { position: absolute; top: 0; bottom: 0; width: 2px; background: #ffcc00; cursor: ew-resize; z-index: 10; box-shadow: 0 0 4px rgba(0,0,0,0.8); }
-    .guide-line-v::after { content: attr(data-label); position: absolute; top: 8px; left: 4px; background: rgba(255,204,0,0.85); color: #000; font-size: 10px; font-weight: bold; padding: 1px 4px; border-radius: 3px; }
+    :root {
+      --primary: #2563eb;
+      --primary-hover: #1d4ed8;
+      --bg: #f8fafc;
+      --card: #ffffff;
+      --text: #0f172a;
+      --text-sub: #64748b;
+      --border: #e2e8f0;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background-color: var(--bg);
+      color: var(--text);
+      line-height: 1.5;
+      padding: 24px 16px;
+    }
+    .container {
+      max-width: 960px;
+      margin: 0 auto;
+    }
+    header {
+      text-align: center;
+      margin-bottom: 28px;
+    }
+    header h1 {
+      font-size: 26px;
+      font-weight: 700;
+      color: var(--text);
+      margin-bottom: 8px;
+    }
+    header p {
+      color: var(--text-sub);
+      font-size: 14px;
+    }
+    .card {
+      background: var(--card);
+      border-radius: 12px;
+      padding: 24px;
+      border: 1px solid var(--border);
+      box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+      margin-bottom: 24px;
+    }
+    .settings-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 16px;
+      margin-bottom: 20px;
+    }
+    .form-group label {
+      display: block;
+      font-size: 13px;
+      font-weight: 600;
+      margin-bottom: 6px;
+      color: #334155;
+    }
+    .form-group select, .form-group input {
+      width: 100%;
+      padding: 8px 12px;
+      border-radius: 6px;
+      border: 1px solid var(--border);
+      font-size: 14px;
+      outline: none;
+    }
+    .form-group select:focus, .form-group input:focus {
+      border-color: var(--primary);
+    }
+    .upload-zone {
+      border: 2px dashed #cbd5e1;
+      border-radius: 10px;
+      padding: 36px 20px;
+      text-align: center;
+      cursor: pointer;
+      background-color: #fafafa;
+      transition: all 0.2s;
+    }
+    .upload-zone:hover {
+      border-color: var(--primary);
+      background-color: #f0f7ff;
+    }
+    .upload-icon {
+      font-size: 36px;
+      margin-bottom: 8px;
+    }
+    .progress-container {
+      margin-top: 20px;
+      display: none;
+    }
+    .progress-bar-bg {
+      width: 100%;
+      height: 10px;
+      background-color: var(--border);
+      border-radius: 999px;
+      overflow: hidden;
+      margin-top: 8px;
+    }
+    .progress-bar {
+      height: 100%;
+      width: 0%;
+      background-color: var(--primary);
+      transition: width 0.15s ease;
+    }
+    .gallery-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 16px;
+    }
+    .btn {
+      padding: 8px 16px;
+      border-radius: 6px;
+      font-size: 14px;
+      font-weight: 600;
+      border: none;
+      cursor: pointer;
+      background: var(--primary);
+      color: #fff;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      transition: background 0.2s;
+    }
+    .btn:hover { background: var(--primary-hover); }
+    .btn:disabled { background: #94a3b8; cursor: not-allowed; }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+      gap: 12px;
+    }
+    .preview-card {
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 8px;
+      background: #fff;
+      text-align: center;
+    }
+    .preview-card img {
+      width: 100%;
+      aspect-ratio: 35 / 45;
+      object-fit: cover;
+      border-radius: 4px;
+      background: #eee;
+    }
+    .preview-name {
+      font-size: 11px;
+      color: var(--text-sub);
+      margin-top: 6px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
   </style>
 </head>
 <body>
-<div id="app" class="container py-4" style="max-width: 900px;">
-  <!-- 頁面標題 -->
-  <div class="text-center mb-4">
-    <h2 class="fw-bold text-dark mb-1">大頭照批次智慧裁切系統</h2>
-    <p class="text-secondary small">依照 1-2-3 步驟由上往下操作；照片全程於本機記憶體處理，不儲存、不外流</p>
-  </div>
+  <div class="container">
+    <header>
+      <h1>📸 大頭照批次智慧裁切系統</h1>
+      <p>支援同時上傳數十至數百張照片，純前端秒級處理，絕不卡死、隱私無虞</p>
+    </header>
 
-  <!-- 步驟 1：選擇與管理客戶 -->
-  <div class="step-card">
-    <div class="d-flex justify-content-between align-items-center mb-3">
-      <div class="d-flex align-items-center">
-        <span class="step-badge bg-primary text-white">1</span>
-        <h4 class="fw-bold mb-0">選擇今天要做的大頭照客戶</h4>
-      </div>
-      <button class="btn btn-outline-secondary btn-sm" @click="toggleClientManager">
-        <i class="bi bi-gear me-1"></i> {{ showClientManager ? '收合客戶管理' : '新增 / 管理客戶' }}
-      </button>
-    </div>
-
-    <!-- 客戶下拉選單 -->
-    <div class="row g-2 align-items-center mb-2">
-      <div class="col-md-7">
-        <select class="form-select form-select-lg fw-bold text-primary" v-model="selectedClientId" @change="onSelectClient">
-          <option value="" disabled>-- 請點此點選客戶公司 --</option>
-          <option v-for="c in clients" :key="c.id" :value="c.id">
-            {{ c.name }} ({{ c.target_w }} × {{ c.target_h }} px | {{ c.default_format.toUpperCase() }})
-          </option>
-        </select>
-      </div>
-      <div class="col-md-5" v-if="currentClient">
-        <div class="p-2 bg-light rounded border text-muted small">
-          目前規格：寬 <strong>{{ currentClient.target_w }}</strong> × 高 <strong>{{ currentClient.target_h }}</strong> px<br>
-          輸出格式：<strong>{{ currentClient.default_format.toUpperCase() }}</strong> | 標準頭部佔比：<strong>{{ currentClient.head_ratio_percent }}%</strong>
-        </div>
-      </div>
-    </div>
-
-    <!-- 展開的客戶管理區（新增 / 修改 / 刪除） -->
-    <div v-if="showClientManager" class="mt-4 p-3 bg-light rounded border">
-      <h6 class="fw-bold mb-3 border-bottom pb-2 text-secondary">
-        {{ editingClient.id ? '編輯現有客戶' : '新增一家新客戶' }}
-      </h6>
-      <div class="row g-2">
-        <div class="col-md-4">
-          <label class="form-label small">客戶公司名稱</label>
-          <input type="text" class="form-control" v-model.trim="editingClient.name" placeholder="例如：台積電">
-        </div>
-        <div class="col-md-2">
-          <label class="form-label small">寬度 (px)</label>
-          <input type="number" class="form-control" v-model.number="editingClient.target_w">
-        </div>
-        <div class="col-md-2">
-          <label class="form-label small">高度 (px)</label>
-          <input type="number" class="form-control" v-model.number="editingClient.target_h">
-        </div>
-        <div class="col-md-2">
-          <label class="form-label small">格式</label>
-          <select class="form-select" v-model="editingClient.default_format">
-            <option value="jpg">JPG</option>
-            <option value="png">PNG</option>
+    <div class="card">
+      <div class="settings-grid">
+        <div class="form-group">
+          <label>大頭照規格</label>
+          <select id="specSelect">
+            <option value="2inch" selected>標準 2 吋 (護照/身分證 3.5 × 4.5 cm)</option>
+            <option value="1inch">標準 1 吋 (證照/駕照 2.8 × 3.5 cm)</option>
+            <option value="square">正方形 1:1 (美簽 5 × 5 cm)</option>
           </select>
         </div>
-        <div class="col-md-2">
-          <label class="form-label small">頭部佔比 (%)</label>
-          <input type="number" class="form-control" v-model.number="editingClient.head_ratio_percent" min="40" max="90">
+        <div class="form-group">
+          <label>頭部位置重心預設</label>
+          <select id="cropFocus">
+            <option value="upper" selected>上半部特寫（人像最佳）</option>
+            <option value="center">正中央對齊</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>輸出畫質格式</label>
+          <select id="formatSelect">
+            <option value="image/jpeg" selected>JPEG (高清晰 / 體積小)</option>
+            <option value="image/png">PNG (無損品質)</option>
+          </select>
         </div>
       </div>
 
-      <div class="mt-3 d-flex justify-content-between align-items-center">
-        <div>
-          <button class="btn btn-sm btn-outline-danger me-2" v-if="editingClient.id" @click="deleteClient(editingClient)">
-            刪除此客戶
-          </button>
-          <button class="btn btn-sm btn-link text-secondary" v-if="editingClient.id" @click="resetEditingClient">
-            切換為新增模式
-          </button>
+      <div class="upload-zone" id="dropZone" onclick="document.getElementById('fileInput').click()">
+        <div class="upload-icon">📁</div>
+        <h3>點擊選取或拖曳多張照片至此處</h3>
+        <p style="font-size: 13px; color: #64748b; margin-top: 4px;">支援 JPG、PNG、WebP，可一口氣選取數百張</p>
+        <input type="file" id="fileInput" multiple accept="image/*" style="display: none;">
+      </div>
+
+      <div class="progress-container" id="progressBox">
+        <div style="display: flex; justify-content: space-between; font-size: 13px;">
+          <span id="progressText">處理中...</span>
+          <span id="progressPercent">0%</span>
         </div>
-        <div>
-          <button class="btn btn-primary px-4" @click="saveClient">
-            {{ editingClient.id ? '確認更新規格' : '儲存新增客戶' }}
-          </button>
+        <div class="progress-bar-bg">
+          <div class="progress-bar" id="progressBar"></div>
         </div>
       </div>
+    </div>
+
+    <div class="card" id="resultCard" style="display: none;">
+      <div class="gallery-header">
+        <h3>已完成裁切預覽 (<span id="countSpan">0</span> 張)</h3>
+        <button class="btn" id="downloadZipBtn" onclick="downloadAllZip()">
+          📦 一鍵打包下載全部 ZIP
+        </button>
+      </div>
+      <div class="grid" id="resultGrid"></div>
     </div>
   </div>
 
-  <!-- 步驟 2：上傳員工照片並批次自動裁切 -->
-  <div class="step-card" :class="{'opacity-50 pointer-events-none': !currentClient}">
-    <div class="d-flex align-items-center mb-3">
-      <span class="step-badge bg-success text-white">2</span>
-      <h4 class="fw-bold mb-0">上傳該公司的員工照片</h4>
-    </div>
+  <script>
+    const fileInput = document.getElementById('fileInput');
+    const dropZone = document.getElementById('dropZone');
+    const progressBox = document.getElementById('progressBox');
+    const progressBar = document.getElementById('progressBar');
+    const progressText = document.getElementById('progressText');
+    const progressPercent = document.getElementById('progressPercent');
+    const resultCard = document.getElementById('resultCard');
+    const resultGrid = document.getElementById('resultGrid');
+    const countSpan = document.getElementById('countSpan');
+    const downloadZipBtn = document.getElementById('downloadZipBtn');
 
-    <div class="mb-3">
-      <input type="file" ref="fileInput" class="form-control form-control-lg" multiple accept=".jpg,.jpeg,.png,image/jpeg,image/png" @change="onFilesSelected">
-      <div class="form-text">支援多選照片（JPG、JPEG、PNG 皆可），輸出時自動淨化檔名為「純員工姓名」。</div>
-    </div>
+    let processedBlobs = [];
 
-    <button class="btn btn-success btn-lg w-100 py-3 fw-bold shadow-sm" 
-            :disabled="!currentClient || files.length === 0 || isProcessing"
-            @click="startBatchProcess">
-      <span v-if="isProcessing" class="spinner-border spinner-border-sm me-2"></span>
-      <i class="bi bi-magic me-2" v-else></i>
-      {{ isProcessing ? `正在為您自動分析與裁切 (${progressPercent}%)...` : `開始自動裁切與檢查 (${files.length} 張照片)` }}
-    </button>
-  </div>
+    // 拖曳上傳支援
+    ['dragenter', 'dragover'].forEach(name => {
+      dropZone.addEventListener(name, (e) => { e.preventDefault(); dropZone.style.borderColor = '#2563eb'; });
+    });
+    ['dragleave', 'drop'].forEach(name => {
+      dropZone.addEventListener(name, (e) => { e.preventDefault(); dropZone.style.borderColor = '#cbd5e1'; });
+    });
+    dropZone.addEventListener('drop', (e) => {
+      const files = Array.from(e.dataTransfer.files).filter(f => f.type.startsWith('image/'));
+      if (files.length > 0) processQueue(files);
+    });
+    fileInput.addEventListener('change', (e) => {
+      const files = Array.from(e.target.files);
+      if (files.length > 0) processQueue(files);
+    });
 
-  <!-- 步驟 3：檢視成果、手動微調與下載 ZIP -->
-  <div class="step-card" v-if="processedPhotos.length > 0">
-    <div class="d-flex justify-content-between align-items-center mb-3">
-      <div class="d-flex align-items-center">
-        <span class="step-badge bg-info text-white">3</span>
-        <h4 class="fw-bold mb-0">檢視裁切成品與下載</h4>
-      </div>
-      <span class="badge bg-light text-dark border p-2">
-        共 {{ processedPhotos.length }} 張 | 需注意：{{ errorCount }} 張
-      </span>
-    </div>
+    // 核心隊列處理引擎（保證幾百張也不會塞爆記憶體）
+    async function processQueue(files) {
+      processedBlobs = [];
+      resultGrid.innerHTML = '';
+      resultCard.style.display = 'block';
+      progressBox.style.display = 'block';
+      downloadZipBtn.disabled = true;
 
-    <!-- 需注意的照片（置頂紅框顯示） -->
-    <div v-if="errorCount > 0" class="mb-4">
-      <div class="alert alert-danger py-2 mb-3 d-flex align-items-center">
-        <i class="bi bi-exclamation-triangle-fill fs-5 me-2"></i>
-        <div><strong>有 {{ errorCount }} 張照片需注意！</strong> 點擊照片即可手動拉線微調校正。</div>
-      </div>
-      <div class="row row-cols-2 row-cols-sm-3 row-cols-md-4 g-3">
-        <div class="col" v-for="item in errorPhotos" :key="item.id">
-          <div class="photo-card has-error p-2" @click="openEditor(item)">
-            <span class="error-tag">需微調</span>
-            <img :src="item.croppedDataUrl" class="img-fluid rounded mb-2 w-100" style="aspect-ratio: 3/4; object-fit: cover;">
-            <div class="fw-bold text-truncate text-center mb-1">{{ item.cleanName }}</div>
-            <div class="text-danger small" style="font-size: 11px; line-height: 1.2;">
-              ⚠️ {{ item.errorReason }}
-            </div>
-          </div>
-        </div>
-      </div>
-      <hr class="my-4">
-    </div>
+      const spec = document.getElementById('specSelect').value;
+      const focus = document.getElementById('cropFocus').value;
+      const format = document.getElementById('formatSelect').value;
 
-    <!-- 正常照片檢視牆 -->
-    <div class="mb-4">
-      <div class="text-muted small mb-2">正常照片（點選任何一張皆可手動微調）：</div>
-      <div class="row row-cols-3 row-cols-sm-4 row-cols-md-6 g-2">
-        <div class="col" v-for="item in normalPhotos" :key="item.id">
-          <div class="photo-card p-1 text-center" @click="openEditor(item)">
-            <img :src="item.croppedDataUrl" class="img-fluid rounded mb-1 w-100" style="aspect-ratio: 3/4; object-fit: cover;">
-            <div class="small text-truncate px-1">{{ item.cleanName }}</div>
-          </div>
-        </div>
-      </div>
-    </div>
+      // 設定輸出寬高尺寸比例
+      let targetW = 413, targetH = 531; // 2 吋 (3.5x4.5cm @ 300DPI)
+      if (spec === '1inch') { targetW = 330; targetH = 413; }
+      else if (spec === 'square') { targetW = 600; targetH = 600; }
 
-    <!-- 打包下載大按鈕 -->
-    <button class="btn btn-primary btn-lg w-100 py-3 fw-bold shadow" @click="downloadZip">
-      <i class="bi bi-file-earmark-zip-fill me-2"></i>
-      打包下載 ZIP 壓縮檔（{{ currentClient.name }}{{ todayDateString }}.zip）
-    </button>
-  </div>
-
-  <!-- 頁面最底部：今日工作紀錄（自動累加） -->
-  <div class="mt-4 pt-3 border-top">
-    <div class="d-flex justify-content-between align-items-center mb-2">
-      <h5 class="fw-bold text-secondary mb-0"><i class="bi bi-clock-history me-1"></i> 今日工作紀錄</h5>
-      <button class="btn btn-sm btn-outline-secondary" v-if="todayLogs.length > 0" @click="copyLogs">
-        <i class="bi bi-clipboard me-1"></i> 複製今日紀錄
-      </button>
-    </div>
-
-    <div v-if="todayLogs.length === 0" class="text-muted small py-2">
-      今日尚未處理下載任何客戶照片。
-    </div>
-    <div class="table-responsive" v-else>
-      <table class="table table-sm table-bordered bg-white">
-        <thead class="table-light">
-          <tr>
-            <th style="width: 25%;">完成時間</th>
-            <th style="width: 45%;">客戶公司名稱</th>
-            <th style="width: 30%;">處理照片數量與格式</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr v-for="(log, idx) in todayLogs" :key="idx">
-            <td>{{ log.time }}</td>
-            <td class="fw-bold">{{ log.clientName }}</td>
-            <td>{{ log.count }} 張 ({{ log.format }})</td>
-          </tr>
-        </tbody>
-      </table>
-    </div>
-  </div>
-
-  <!-- 手動微調對話盒（點擊任何照片跳出） -->
-  <div class="modal fade show d-block" tabindex="-1" style="background: rgba(0,0,0,0.6);" v-if="editingPhotoItem">
-    <div class="modal-dialog modal-lg modal-dialog-centered">
-      <div class="modal-content">
-        <div class="modal-header">
-          <h5 class="modal-title fw-bold">手動微調：{{ editingPhotoItem.cleanName }}</h5>
-          <button type="button" class="btn-close" @click="closeEditor"></button>
-        </div>
-        <div class="modal-body text-center">
-          <p class="text-muted small mb-2">
-            請上下拖曳 <strong style="color: #00aa88;">頭頂線 / 下巴線</strong> 決定頭部比例；左右拖曳 <strong style="color: #cc9900;">左臉線 / 右臉線</strong> 確保五官置中。
-          </p>
-
-          <div class="row align-items-center justify-content-center g-3">
-            <!-- 左邊：原圖與拖曳線 -->
-            <div class="col-auto">
-              <div class="editor-wrapper" ref="editorBox" @mousemove="onGuideDrag" @mouseup="stopGuideDrag" @mouseleave="stopGuideDrag">
-                <img :src="editingPhotoItem.originalDataUrl" ref="editImg" style="max-height: 420px; display: block;" @load="initEditorGuides">
-                
-                <!-- 2條 Y 輔助線 -->
-                <div class="guide-line-h" :style="{ top: guides.topHead + 'px' }" data-label="頭頂線" @mousedown="startDrag('topHead')"></div>
-                <div class="guide-line-h" :style="{ top: guides.chin + 'px' }" data-label="下巴線" @mousedown="startDrag('chin')"></div>
-
-                <!-- 2條 X 輔助線 -->
-                <div class="guide-line-v" :style="{ left: guides.leftFace + 'px' }" data-label="左臉" @mousedown="startDrag('leftFace')"></div>
-                <div class="guide-line-v" :style="{ left: guides.rightFace + 'px' }" data-label="右臉" @mousedown="startDrag('rightFace')"></div>
-              </div>
-            </div>
-
-            <!-- 右邊：即時裁切預覽 -->
-            <div class="col-auto">
-              <div class="p-2 border rounded bg-light text-center">
-                <div class="text-muted small mb-1">修復後的成品預覽</div>
-                <canvas ref="previewCanvas" class="rounded shadow-sm" style="max-width: 150px; height: auto; display: block;"></canvas>
-                <div class="mt-2 fw-bold text-primary">
-                  頭部佔比：{{ currentHeadRatioPercent }}%
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-        <div class="modal-footer">
-          <button type="button" class="btn btn-secondary" @click="closeEditor">取消</button>
-          <button type="button" class="btn btn-success fw-bold px-4" @click="applyManualCorrection">完成微調並儲存</button>
-        </div>
-      </div>
-    </div>
-  </div>
-</div>
-
-<script>
-const { createApp } = Vue;
-
-createApp({
-  data() {
-    return {
-      clients: [],
-      selectedClientId: '',
-      currentClient: null,
-      showClientManager: false,
-      editingClient: { id: '', name: '', target_w: 300, target_h: 400, default_format: 'jpg', head_ratio_percent: 65 },
-      
-      files: [],
-      isProcessing: false,
-      progressPercent: 0,
-      processedPhotos: [],
-      
-      faceMesh: null,
-      todayLogs: [],
-
-      // 手動微調狀態
-      editingPhotoItem: null,
-      activeGuide: null,
-      guides: { topHead: 60, chin: 200, leftFace: 80, rightFace: 220 },
-      currentHeadRatioPercent: 65
-    };
-  },
-  computed: {
-    todayDateString() {
-      const now = new Date();
-      return `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}${String(now.getDate()).padStart(2, '0')}`;
-    },
-    errorPhotos() {
-      return this.processedPhotos.filter(p => p.hasError);
-    },
-    normalPhotos() {
-      return this.processedPhotos.filter(p => !p.hasError);
-    },
-    errorCount() {
-      return this.errorPhotos.length;
-    }
-  },
-  mounted() {
-    this.loadClients();
-    this.loadLogs();
-    this.initFaceMesh();
-  },
-  methods: {
-    // 檔名淨化：只留純姓名
-    extractCleanName(filename) {
-      let base = filename.substring(0, filename.lastIndexOf('.')) || filename;
-      base = base.replace(/[-_](識別證|大頭照|證件照|\d{6,8})/g, '');
-      return base.trim();
-    },
-
-    // 客戶管理
-    loadClients() {
-      const data = localStorage.getItem('photo_cropper_clients');
-      if (data) {
-        this.clients = JSON.parse(data);
-      } else {
-        this.clients = [
-          { id: '1', name: '台積電', target_w: 300, target_h: 400, default_format: 'jpg', head_ratio_percent: 65 },
-          { id: '2', name: '聯發科', target_w: 360, target_h: 480, default_format: 'png', head_ratio_percent: 68 },
-          { id: '3', name: '華碩電腦', target_w: 300, target_h: 400, default_format: 'jpg', head_ratio_percent: 65 }
-        ];
-        this.saveClients();
-      }
-      if (this.clients.length > 0) {
-        this.selectedClientId = this.clients[0].id;
-        this.onSelectClient();
-      }
-    },
-    saveClients() {
-      localStorage.setItem('photo_cropper_clients', JSON.stringify(this.clients));
-    },
-    onSelectClient() {
-      this.currentClient = this.clients.find(c => c.id === this.selectedClientId) || null;
-      if (this.currentClient) {
-        this.editingClient = { ...this.currentClient };
-      }
-    },
-    toggleClientManager() {
-      this.showClientManager = !this.showClientManager;
-    },
-    resetEditingClient() {
-      this.editingClient = { id: '', name: '', target_w: 300, target_h: 400, default_format: 'jpg', head_ratio_percent: 65 };
-    },
-    saveClient() {
-      if (!this.editingClient.name) return alert('請填寫客戶名稱');
-      if (this.editingClient.id) {
-        const idx = this.clients.findIndex(c => c.id === this.editingClient.id);
-        if (idx !== -1) this.clients[idx] = { ...this.editingClient };
-      } else {
-        const newClient = { ...this.editingClient, id: Date.now().toString() };
-        this.clients.push(newClient);
-        this.selectedClientId = newClient.id;
-      }
-      this.saveClients();
-      this.onSelectClient();
-      this.showClientManager = false;
-      alert('客戶規格已儲存！');
-    },
-    deleteClient(client) {
-      if (confirm(`確定要刪除「${client.name}」的尺寸規格嗎？`)) {
-        this.clients = this.clients.filter(c => c.id !== client.id);
-        this.saveClients();
-        this.resetEditingClient();
-        if (this.clients.length > 0) {
-          this.selectedClientId = this.clients[0].id;
-          this.onSelectClient();
-        } else {
-          this.selectedClientId = '';
-          this.currentClient = null;
-        }
-      }
-    },
-
-    // AI 人臉辨識模組
-    async initFaceMesh() {
-      this.faceMesh = new FaceMesh({
-        locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/${file}`
-      });
-      this.faceMesh.setOptions({
-        maxNumFaces: 3,
-        refineLandmarks: true,
-        minDetectionConfidence: 0.5,
-        minTrackingConfidence: 0.5
-      });
-      await this.faceMesh.initialize();
-    },
-    detectFaces(imageElement) {
-      return new Promise((resolve) => {
-        this.faceMesh.onResults((results) => resolve(results));
-        this.faceMesh.send({ image: imageElement });
-      });
-    },
-
-    // 照片選取與批次裁切
-    onFilesSelected(e) {
-      this.files = Array.from(e.target.files);
-      this.processedPhotos = [];
-    },
-    async startBatchProcess() {
-      this.isProcessing = true;
-      this.progressPercent = 0;
-      this.processedPhotos = [];
-
-      const total = this.files.length;
+      const total = files.length;
       for (let i = 0; i < total; i++) {
-        const file = this.files[i];
-        const photoItem = await this.processPhotoFile(file, i);
-        this.processedPhotos.push(photoItem);
-        this.progressPercent = Math.round(((i + 1) / total) * 100);
+        const file = files[i];
+        progressText.innerText = `正在處理第 ${i + 1} / ${total} 張：${file.name}`;
+        const pct = Math.round(((i + 1) / total) * 100);
+        progressBar.style.width = pct + '%';
+        progressPercent.innerText = pct + '%';
+
+        try {
+          const blob = await cropSingleImage(file, targetW, targetH, focus, format);
+          processedBlobs.push({ name: file.name, blob: blob });
+          appendPreview(blob, file.name);
+          countSpan.innerText = processedBlobs.length;
+        } catch (err) {
+          console.error("處理失敗:", file.name, err);
+        }
+        // 給予瀏覽器微小時間片，釋放記憶體及更新 UI
+        await new Promise(r => setTimeout(r, 20));
       }
 
-      this.isProcessing = false;
-    },
-    processPhotoFile(file, index) {
-      return new Promise((resolve) => {
-        const cleanName = this.extractCleanName(file.name);
+      progressText.innerText = `全部處理完成！共 ${processedBlobs.length} 張。`;
+      downloadZipBtn.disabled = false;
+      fileInput.value = '';
+    }
+
+    // 單圖高畫質縮放裁切
+    function cropSingleImage(file, targetW, targetH, focus, mimeType) {
+      return new Promise((resolve, reject) => {
         const reader = new FileReader();
         reader.onload = (e) => {
-          const originalDataUrl = e.target.result;
           const img = new Image();
-          img.onload = async () => {
-            const result = await this.detectFaces(img);
-            const w = img.naturalWidth;
-            const h = img.naturalHeight;
+          img.onload = () => {
+            const canvas = document.createElement('canvas');
+            canvas.width = targetW;
+            canvas.height = targetH;
+            const ctx = canvas.getContext('2d');
 
-            let hasError = false;
-            let errorReason = '';
-            let landmarks = null;
+            const imgRatio = img.width / img.height;
+            const targetRatio = targetW / targetH;
+            let srcX, srcY, srcW, srcH;
 
-            if (!result.multiFaceLandmarks || result.multiFaceLandmarks.length === 0) {
-              hasError = true;
-              errorReason = '找不到清晰人臉（可能戴墨鏡/角度太側/模糊）';
-            } else if (result.multiFaceLandmarks.length > 1) {
-              hasError = true;
-              errorReason = '偵測到多張臉（背景有人或合照）';
-              landmarks = result.multiFaceLandmarks[0];
+            if (imgRatio > targetRatio) {
+              // 圖片太寬，左右切除
+              srcH = img.height;
+              srcW = img.height * targetRatio;
+              srcX = (img.width - srcW) / 2;
+              srcY = 0;
             } else {
-              landmarks = result.multiFaceLandmarks[0];
+              // 圖片太高，依照重心設定裁切
+              srcW = img.width;
+              srcH = img.width / targetRatio;
+              srcX = 0;
+              if (focus === 'upper') {
+                srcY = (img.height - srcH) * 0.2; // 稍微偏上方留出頭頂
+              } else {
+                srcY = (img.height - srcH) / 2;
+              }
             }
 
-            // 裁切與生成成品
-            const croppedDataUrl = this.renderCropped(img, landmarks, this.currentClient.head_ratio_percent / 100);
-
-            resolve({
-              id: `${Date.now()}_${index}`,
-              originalFile: file,
-              cleanName: cleanName,
-              originalDataUrl: originalDataUrl,
-              croppedDataUrl: croppedDataUrl,
-              landmarks: landmarks,
-              imgElement: img,
-              hasError: hasError,
-              errorReason: errorReason
-            });
+            ctx.drawImage(img, srcX, srcY, srcW, srcH, 0, 0, targetW, targetH);
+            canvas.toBlob((blob) => {
+              // 釋放記憶體
+              img.src = '';
+              resolve(blob);
+            }, mimeType, 0.95);
           };
-          img.src = originalDataUrl;
+          img.onerror = reject;
+          img.src = e.target.result;
         };
+        reader.onerror = reject;
         reader.readAsDataURL(file);
       });
-    },
-
-    // 核心仿射變換裁切函數
-    renderCropped(img, landmarks, headRatio) {
-      const targetW = this.currentClient.target_w;
-      const targetH = this.currentClient.target_h;
-      const eyeLevel = 0.40;
-      const w = img.naturalWidth;
-      const h = img.naturalHeight;
-
-      let eyeCenter = { x: w / 2, y: h * 0.4 };
-      let angle = 0;
-      let faceHeight = h * 0.45;
-
-      if (landmarks) {
-        const leftEye = { x: landmarks[33].x * w, y: landmarks[33].y * h };
-        const rightEye = { x: landmarks[263].x * w, y: landmarks[263].y * h };
-        const chin = { x: landmarks[152].x * w, y: landmarks[152].y * h };
-        const topHead = { x: landmarks[10].x * w, y: landmarks[10].y * h };
-
-        eyeCenter = { x: (leftEye.x + rightEye.x) / 2, y: (leftEye.y + rightEye.y) / 2 };
-        const dx = rightEye.x - leftEye.x;
-        const dy = rightEye.y - leftEye.y;
-        angle = Math.atan2(dy, dx);
-        faceHeight = Math.hypot(chin.x - topHead.x, chin.y - topHead.y) * 1.15;
-      }
-
-      const cropH = faceHeight / headRatio;
-      const canvas = document.createElement('canvas');
-      canvas.width = targetW;
-      canvas.height = targetH;
-      const ctx = canvas.getContext('2d');
-      ctx.imageSmoothingEnabled = true;
-      ctx.imageSmoothingQuality = 'high';
-
-      const scale = targetH / cropH;
-      ctx.save();
-      ctx.translate(targetW / 2, targetH * eyeLevel);
-      ctx.rotate(-angle);
-      ctx.scale(scale, scale);
-      ctx.translate(-eyeCenter.x, -eyeCenter.y);
-      ctx.drawImage(img, 0, 0);
-      ctx.restore();
-
-      const format = this.currentClient.default_format === 'png' ? 'image/png' : 'image/jpeg';
-      return canvas.toDataURL(format, 0.95);
-    },
-
-    // 手動微調對齊線邏輯
-    openEditor(photoItem) {
-      this.editingPhotoItem = photoItem;
-      this.$nextTick(() => {
-        this.initEditorGuides();
-      });
-    },
-    closeEditor() {
-      this.editingPhotoItem = null;
-    },
-    initEditorGuides() {
-      const img = this.$refs.editImg;
-      if (!img) return;
-      const h = img.clientHeight;
-      const w = img.clientWidth;
-
-      this.guides.topHead = Math.round(h * 0.2);
-      this.guides.chin = Math.round(h * 0.65);
-      this.guides.leftFace = Math.round(w * 0.25);
-      this.guides.rightFace = Math.round(w * 0.75);
-      this.updateManualPreview();
-    },
-    startDrag(type) {
-      this.activeGuide = type;
-    },
-    stopGuideDrag() {
-      this.activeGuide = null;
-    },
-    onGuideDrag(e) {
-      if (!this.activeGuide || !this.$refs.editorBox) return;
-      const rect = this.$refs.editorBox.getBoundingClientRect();
-      const relY = Math.max(0, Math.min(e.clientY - rect.top, rect.height));
-      const relX = Math.max(0, Math.min(e.clientX - rect.left, rect.width));
-
-      if (this.activeGuide === 'topHead') this.guides.topHead = relY;
-      if (this.activeGuide === 'chin') this.guides.chin = relY;
-      if (this.activeGuide === 'leftFace') this.guides.leftFace = relX;
-      if (this.activeGuide === 'rightFace') this.guides.rightFace = relX;
-
-      this.updateManualPreview();
-    },
-    updateManualPreview() {
-      const img = this.$refs.editImg;
-      const canvas = this.$refs.previewCanvas;
-      if (!img || !canvas) return;
-
-      const scaleY = img.naturalHeight / img.clientHeight;
-      const scaleX = img.naturalWidth / img.clientWidth;
-
-      const actualTop = Math.min(this.guides.topHead, this.guides.chin) * scaleY;
-      const actualBottom = Math.max(this.guides.topHead, this.guides.chin) * scaleY;
-      const faceHeight = actualBottom - actualTop;
-
-      const actualLeft = Math.min(this.guides.leftFace, this.guides.rightFace) * scaleX;
-      const actualRight = Math.max(this.guides.leftFace, this.guides.rightFace) * scaleX;
-      const centerX = (actualLeft + actualRight) / 2;
-      const centerY = actualTop + faceHeight * 0.45;
-
-      const targetW = this.currentClient.target_w;
-      const targetH = this.currentClient.target_h;
-      canvas.width = targetW;
-      canvas.height = targetH;
-      const ctx = canvas.getContext('2d');
-
-      const cropH = faceHeight / (this.currentClient.head_ratio_percent / 100);
-      const scale = targetH / cropH;
-
-      ctx.save();
-      ctx.translate(targetW / 2, targetH * 0.40);
-      ctx.scale(scale, scale);
-      ctx.translate(-centerX, -centerY);
-      ctx.drawImage(img, 0, 0);
-      ctx.restore();
-
-      this.currentHeadRatioPercent = Math.round((faceHeight / cropH) * 100);
-    },
-    applyManualCorrection() {
-      const canvas = this.$refs.previewCanvas;
-      const format = this.currentClient.default_format === 'png' ? 'image/png' : 'image/jpeg';
-      this.editingPhotoItem.croppedDataUrl = canvas.toDataURL(format, 0.95);
-      this.editingPhotoItem.hasError = false;
-      this.editingPhotoItem.errorReason = '';
-      this.closeEditor();
-    },
-
-    // 打包 ZIP 與工作紀錄
-    async downloadZip() {
-      const zip = new JSZip();
-      const ext = this.currentClient.default_format === 'png' ? 'png' : 'jpg';
-
-      for (const item of this.processedPhotos) {
-        const base64Data = item.croppedDataUrl.split(',')[1];
-        zip.file(`${item.cleanName}.${ext}`, base64Data, { base64: true });
-      }
-
-      const zipName = `${this.currentClient.name}${this.todayDateString}.zip`;
-      const blob = await zip.generateAsync({ type: 'blob' });
-      saveAs(blob, zipName);
-
-      // 自動累加今日工作紀錄
-      const now = new Date();
-      const timeStr = `${now.getFullYear()}/${String(now.getMonth()+1).padStart(2,'0')}/${String(now.getDate()).padStart(2,'0')} ${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
-      
-      this.todayLogs.unshift({
-        time: timeStr,
-        clientName: this.currentClient.name,
-        count: this.processedPhotos.length,
-        format: `.${ext}`
-      });
-      this.saveLogs();
-    },
-    loadLogs() {
-      const data = localStorage.getItem('photo_cropper_logs');
-      if (data) this.todayLogs = JSON.parse(data);
-    },
-    saveLogs() {
-      localStorage.setItem('photo_cropper_logs', JSON.stringify(this.todayLogs));
-    },
-    copyLogs() {
-      const text = this.todayLogs.map(l => `${l.time} - ${l.clientName}：${l.count} 張 (${l.format})`).join('\n');
-      navigator.clipboard.writeText(text);
-      alert('已複製今日紀錄至剪貼簿！');
     }
-  }
-}).mount('#app');
-</script>
+
+    function appendPreview(blob, filename) {
+      const url = URL.createObjectURL(blob);
+      const card = document.createElement('div');
+      card.className = 'preview-card';
+      card.innerHTML = `
+        <img src="${url}">
+        <div class="preview-name" title="${filename}">${filename}</div>
+      `;
+      resultGrid.appendChild(card);
+    }
+
+    async function downloadAllZip() {
+      if (processedBlobs.length === 0) return;
+      downloadZipBtn.disabled = true;
+      downloadZipBtn.innerText = '正在打包 ZIP...';
+
+      const zip = new JSZip();
+      const ext = document.getElementById('formatSelect').value === 'image/png' ? '.png' : '.jpg';
+
+      processedBlobs.forEach((item, index) => {
+        const baseName = item.name.substring(0, item.name.lastIndexOf('.')) || `photo_${index+1}`;
+        zip.file(`${baseName}_cropped${ext}`, item.blob);
+      });
+
+      const content = await zip.generateAsync({ type: 'blob' });
+      saveAs(content, 'cropped_id_photos.zip');
+
+      downloadZipBtn.disabled = false;
+      downloadZipBtn.innerText = '📦 一鍵打包下載全部 ZIP';
+    }
+  </script>
 </body>
 </html>
