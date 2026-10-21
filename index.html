@@ -137,7 +137,7 @@
       font-size: 14px;
     }
 
-    /* 批次上傳區 */
+    /* 批次上傳區（含拖曳支援） */
     .upload-box {
       border: 2px dashed #94a3b8;
       background: #fafafa;
@@ -147,7 +147,11 @@
       cursor: pointer;
       transition: all 0.2s;
     }
-    .upload-box:hover { border-color: var(--primary); background: #eff6ff; }
+    .upload-box.dragover {
+      border-color: var(--primary);
+      background: #eff6ff;
+      transform: scale(1.01);
+    }
     .progress-box { margin-top: 14px; display: none; }
     .progress-bar { width: 100%; height: 8px; background: #e2e8f0; border-radius: 99px; overflow: hidden; margin-top: 6px; }
     .progress-fill { width: 0%; height: 100%; background: var(--primary); transition: width 0.1s ease; }
@@ -206,9 +210,9 @@
     .modal-box {
       background: #fff;
       border-radius: 12px;
-      max-width: 850px;
+      max-width: 900px;
       width: 100%;
-      max-height: 94vh;
+      max-height: 96vh;
       display: flex;
       flex-direction: column;
       overflow: hidden;
@@ -227,6 +231,7 @@
       flex-direction: column;
       align-items: center;
       user-select: none;
+      overflow: auto;
     }
     .ratio-dashboard {
       background: #1e293b;
@@ -235,13 +240,51 @@
       border-radius: 8px;
       margin-bottom: 12px;
       display: flex;
-      gap: 20px;
-      font-size: 15px;
+      flex-wrap: wrap;
+      gap: 16px;
+      font-size: 14px;
       font-weight: 700;
       width: 100%;
       justify-content: center;
     }
-    .ratio-val { color: #facc15; font-size: 18px; }
+    .ratio-val { color: #facc15; font-size: 17px; }
+    .dim-val { color: #38bdf8; font-size: 16px; }
+
+    /* 尺標容器與裁切台 */
+    .ruler-container {
+      position: relative;
+      padding-top: 24px;
+      padding-left: 30px;
+    }
+    .ruler-top {
+      position: absolute;
+      top: 0;
+      left: 30px;
+      height: 24px;
+      background: #1e293b;
+      border-bottom: 1px solid #64748b;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 4px;
+      font-size: 11px;
+      color: #94a3b8;
+    }
+    .ruler-left {
+      position: absolute;
+      top: 24px;
+      left: 0;
+      width: 30px;
+      background: #1e293b;
+      border-right: 1px solid #64748b;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: space-between;
+      padding: 4px 0;
+      font-size: 11px;
+      color: #94a3b8;
+    }
     .crop-stage {
       position: relative;
       border: 2px solid #fff;
@@ -272,7 +315,7 @@
     }
     .line-tag {
       position: absolute;
-      background: rgba(0,0,0,0.8);
+      background: rgba(0,0,0,0.85);
       color: #fff;
       font-size: 11px;
       padding: 2px 4px;
@@ -298,7 +341,7 @@
         <label style="font-weight: 700;">目前處理客戶：</label>
         <select id="clientSelect" onchange="onSelectClient()"></select>
         <span class="client-info-tag" id="clientSpecTag">尺寸：-</span>
-        <button class="btn btn-outline" onclick="openNewClientForm()">➕ 新增新客戶</button>
+        <button class="btn btn-outline" onclick="openNewClientForm()">➕ 新增客戶</button>
         <button class="btn btn-outline" onclick="openEditClientForm()">✏️ 修改客戶設定</button>
         <button class="btn btn-danger" onclick="deleteCurrentClient()">🗑️ 刪除客戶</button>
       </div>
@@ -306,8 +349,8 @@
       <!-- 客戶編輯/新增表單 -->
       <div class="client-form" id="clientFormBox" style="display: none;">
         <div class="field-group">
-          <label>客戶姓名</label>
-          <input type="text" id="cName" placeholder="例如：王小明">
+          <label>客戶公司姓名</label>
+          <input type="text" id="cName" placeholder="例如：美商聯邦 / 王小明">
         </div>
         <div class="field-group">
           <label>規格預設</label>
@@ -347,9 +390,9 @@
         <div class="step-badge">2</div>
         <div class="step-title">批量上傳該客戶的照片</div>
       </div>
-      <div class="upload-box" onclick="document.getElementById('fileInput').click()">
+      <div class="upload-box" id="dropZone" onclick="document.getElementById('fileInput').click()">
         <div style="font-size: 36px; margin-bottom: 8px;">📂</div>
-        <h3 style="margin-bottom: 4px;">點擊選取或拖曳多張照片至此處</h3>
+        <h3 style="margin-bottom: 4px;">點擊選取或將照片拖曳至此處</h3>
         <p style="color: #64748b; font-size: 13px;">可一口氣選取數十至上百張照片，系統自動排隊處理不卡死</p>
         <input type="file" id="fileInput" multiple accept="image/*" style="display: none;" onchange="handleBatchUpload(this.files)">
       </div>
@@ -390,13 +433,28 @@
         <div class="ratio-dashboard">
           <div>📏 頭部長度佔比：<span class="ratio-val" id="valHead">75%</span></div>
           <div>↔️ 臉部寬度佔比：<span class="ratio-val" id="valFace">50%</span></div>
+          <div>📐 照片尺寸：<span class="dim-val" id="valDimensions">413 × 531 px</span></div>
         </div>
-        <div class="crop-stage" id="cropStage">
-          <canvas id="cropCanvas"></canvas>
-          <div class="line-y" id="lineY1"><span class="line-tag" style="top:-18px; left:6px;">頭頂 (Y1)</span></div>
-          <div class="line-y" id="lineY2"><span class="line-tag" style="bottom:-18px; left:6px;">下巴 (Y2)</span></div>
-          <div class="line-x" id="lineX1"><span class="line-tag" style="top:6px; left:6px;">左臉 (X1)</span></div>
-          <div class="line-x" id="lineX2"><span class="line-tag" style="top:6px; right:6px;">右臉 (X2)</span></div>
+        
+        <!-- 尺標與畫布區域 -->
+        <div class="ruler-container" id="rulerContainer">
+          <div class="ruler-top" id="rulerTop">
+            <span>0</span>
+            <span id="rulerTopMid">寬度 413 px</span>
+            <span id="rulerTopMax">413</span>
+          </div>
+          <div class="ruler-left" id="rulerLeft">
+            <span>0</span>
+            <span style="writing-mode: vertical-rl; transform: rotate(180deg);" id="rulerLeftMid">高度 531 px</span>
+            <span id="rulerLeftMax">531</span>
+          </div>
+          <div class="crop-stage" id="cropStage">
+            <canvas id="cropCanvas"></canvas>
+            <div class="line-y" id="lineY1"><span class="line-tag" style="top:-18px; left:6px;">頭頂 (Y1)</span></div>
+            <div class="line-y" id="lineY2"><span class="line-tag" style="bottom:-18px; left:6px;">下巴 (Y2)</span></div>
+            <div class="line-x" id="lineX1"><span class="line-tag" style="top:6px; left:6px;">左臉 (X1)</span></div>
+            <div class="line-x" id="lineX2"><span class="line-tag" style="top:6px; right:6px;">右臉 (X2)</span></div>
+          </div>
         </div>
       </div>
       <div class="modal-header" style="border-top: 1px solid var(--border); border-bottom: none; background: #fff;">
@@ -410,7 +468,6 @@
   </div>
 
   <script>
-    // 客戶清單資料
     let clients = [
       { id: '1', name: '預設標準客戶', width: 413, height: 531, ratio: 0.75 }
     ];
@@ -422,6 +479,36 @@
     function init() {
       renderClientSelect();
       updateClientTag();
+      bindDragAndDrop();
+    }
+
+    // 拖曳上傳監聽修復
+    function bindDragAndDrop() {
+      const dropZone = document.getElementById('dropZone');
+
+      ['dragenter', 'dragover'].forEach(eventName => {
+        dropZone.addEventListener(eventName, (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          dropZone.classList.add('dragover');
+        }, false);
+      });
+
+      ['dragleave', 'drop'].forEach(eventName => {
+        dropZone.addEventListener(eventName, (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          dropZone.classList.remove('dragover');
+        }, false);
+      });
+
+      dropZone.addEventListener('drop', (e) => {
+        const dt = e.dataTransfer;
+        const files = dt.files;
+        if (files && files.length) {
+          handleBatchUpload(files);
+        }
+      }, false);
     }
 
     function renderClientSelect() {
@@ -483,7 +570,7 @@
       const w = parseInt(document.getElementById('cWidth').value) || 413;
       const h = parseInt(document.getElementById('cHeight').value) || 531;
       const r = parseFloat(document.getElementById('cRatio').value) || 0.75;
-      if (!name) return alert('請輸入客戶姓名');
+      if (!name) return alert('請輸入客戶公司姓名');
 
       if (isEditing) {
         const c = clients.find(x => x.id === currentClientId);
@@ -507,7 +594,7 @@
       updateClientTag();
     }
 
-    // 批次防卡死上傳佇列
+    // 批次防卡死佇列
     async function handleBatchUpload(files) {
       if (!files.length) return;
       const client = clients.find(x => x.id === currentClientId);
@@ -531,7 +618,7 @@
         progressPct.innerText = pct + '%';
 
         await processImage(file, client);
-        await new Promise(r => setTimeout(r, 20)); // 讓瀏覽器釋放記憶體
+        await new Promise(r => setTimeout(r, 20));
       }
 
       progressText.innerText = `全部 ${total} 張已處理完成！`;
@@ -569,16 +656,14 @@
       });
     }
 
-    // 初始依照客戶尺寸與頭身比例智慧裁切
     function autoCropInit(item) {
       const tw = item.targetW;
       const th = item.targetH;
       const baseScale = Math.max(tw / item.img.width, th / item.img.height);
       item.scale = baseScale * (1 / item.ratio);
       item.offsetX = (tw - item.img.width * item.scale) / 2;
-      item.offsetY = (th - item.img.height * item.scale) * 0.2; // 頭部偏上
+      item.offsetY = (th - item.img.height * item.scale) * 0.2;
 
-      // 預設 4 條線位置
       item.y1 = th * 0.15;
       item.y2 = th * (0.15 + item.ratio * 0.75);
       item.x1 = tw * 0.25;
@@ -662,7 +747,7 @@
       btn.innerText = '📦 打包全部下載 (ZIP)';
     }
 
-    // 步驟 3：微調核心 (2 條 Y、2 條 X 與百分比)
+    // 步驟 3：微調核心 (2 條 Y、2 條 X、百分比與尺標)
     const mCanvas = document.getElementById('cropCanvas');
     const mCtx = mCanvas.getContext('2d');
     const stage = document.getElementById('cropStage');
@@ -678,10 +763,22 @@
       activeItem = photoList.find(x => x.id == id);
       if (!activeItem) return;
 
-      mCanvas.width = activeItem.targetW;
-      mCanvas.height = activeItem.targetH;
-      stage.style.width = activeItem.targetW + 'px';
-      stage.style.height = activeItem.targetH + 'px';
+      const tw = activeItem.targetW;
+      const th = activeItem.targetH;
+
+      mCanvas.width = tw;
+      mCanvas.height = th;
+      stage.style.width = tw + 'px';
+      stage.style.height = th + 'px';
+
+      // 設定尺標數據與位置
+      document.getElementById('rulerTop').style.width = tw + 'px';
+      document.getElementById('rulerLeft').style.height = th + 'px';
+      document.getElementById('rulerTopMax').innerText = tw;
+      document.getElementById('rulerTopMid').innerText = `寬度 ${tw} px`;
+      document.getElementById('rulerLeftMax').innerText = th;
+      document.getElementById('rulerLeftMid').innerText = `高度 ${th} px`;
+      document.getElementById('valDimensions').innerText = `${tw} × ${th} px`;
 
       updateLinesUI();
       drawStage();
@@ -709,7 +806,6 @@
       mCtx.drawImage(activeItem.img, activeItem.offsetX, activeItem.offsetY, activeItem.img.width * activeItem.scale, activeItem.img.height * activeItem.scale);
     }
 
-    // 事件監聽：拖曳 4 條線與照片平移
     lineY1.onmousedown = e => { dragLine = 'y1'; e.stopPropagation(); };
     lineY2.onmousedown = e => { dragLine = 'y2'; e.stopPropagation(); };
     lineX1.onmousedown = e => { dragLine = 'x1'; e.stopPropagation(); };
@@ -760,7 +856,6 @@
       });
     }
 
-    // 啟動初始化
     init();
   </script>
 </body>
