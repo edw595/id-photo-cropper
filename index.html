@@ -1,3 +1,21 @@
+這份就是已經將所有修改完整整合好的最終代碼。
+
+本次修改重點：
+
+1. **嚴格以 4 條線框出頭部五官計算比例**：
+* **頭身長度佔比**：由上下兩條黃線貼齊「頭髮頂部」與「下巴底端」精準計算 `(Y2 - Y1) / 照片高度`。
+* **臉部寬度佔比**：由左右兩條藍線貼齊「左右臉頰邊緣」精準計算 `(X2 - X1) / 照片寬度`。
+
+
+2. **微調視窗內建旋轉工具**（順/逆時針 90° 與 ±15° 微調滑桿），成果保存不跑版。
+3. **取消多餘外圍尺標**，乾淨呈現照片尺寸。
+4. **完整支援照片批量拖曳上傳與佇列防崩潰**。
+
+---
+
+請直接前往 GitHub 的 `index.html`，點擊鉛筆編輯圖示，按鍵盤 `Ctrl + A`（Mac 按 `Cmd + A`）**全選清空**，貼上下方完整代碼後點擊 **Commit changes** 儲存即可：
+
+```html
 <!DOCTYPE html>
 <html lang="zh-TW">
 <head>
@@ -382,7 +400,7 @@
           <button class="btn btn-success" id="zipBtn" onclick="exportZip()">📦 打包全部下載 (ZIP)</button>
         </div>
       </div>
-      <p style="font-size: 13px; color: #64748b; margin-bottom: 8px;">💡 提示：點擊任何一張照片縮圖，可開啟微調器拖拉 4 條線、縮放與旋轉角度。</p>
+      <p style="font-size: 13px; color: #64748b; margin-bottom: 8px;">💡 提示：點擊任何一張照片縮圖，可開啟微調器拖拉 4 條線對齊五官、縮放與旋轉角度。</p>
       <div class="gallery-grid" id="galleryGrid"></div>
     </div>
   </div>
@@ -403,13 +421,13 @@
         
         <div class="crop-stage" id="cropStage">
           <canvas id="cropCanvas"></canvas>
-          <div class="line-y" id="lineY1"><span class="line-tag" style="top:-18px; left:6px;">頭頂 (Y1)</span></div>
-          <div class="line-y" id="lineY2"><span class="line-tag" style="bottom:-18px; left:6px;">下巴 (Y2)</span></div>
+          <div class="line-y" id="lineY1"><span class="line-tag" style="top:-18px; left:6px;">頭髮頂端 (Y1)</span></div>
+          <div class="line-y" id="lineY2"><span class="line-tag" style="bottom:-18px; left:6px;">下巴底端 (Y2)</span></div>
           <div class="line-x" id="lineX1"><span class="line-tag" style="top:6px; left:6px;">左臉 (X1)</span></div>
           <div class="line-x" id="lineX2"><span class="line-tag" style="top:6px; right:6px;">右臉 (X2)</span></div>
         </div>
 
-        <!-- 旋轉與標準頭身長度對齊工具列 -->
+        <!-- 旋轉與對齊工具列 -->
         <div style="display: flex; gap: 12px; align-items: center; margin-top: 12px; color: #fff; font-size: 13px; flex-wrap: wrap; justify-content: center;">
           <button class="btn btn-outline" style="padding: 5px 10px; color: #fff; border-color: #64748b; background: #334155;" onclick="rotatePhoto(-90)">↺ 逆時針 90°</button>
           <button class="btn btn-outline" style="padding: 5px 10px; color: #fff; border-color: #64748b; background: #334155;" onclick="rotatePhoto(90)">↻ 順時針 90°</button>
@@ -420,7 +438,7 @@
         </div>
       </div>
       <div class="modal-header" style="border-top: 1px solid var(--border); border-bottom: none; background: #fff;">
-        <span style="font-size: 12px; color: #64748b;">拖動黃線量頭頂下巴、拖動藍線量臉寬；滾輪縮放照片、按住拖曳位置</span>
+        <span style="font-size: 12px; color: #64748b;">拖動黃線貼齊頭髮與下巴、藍線貼齊兩頰；滾輪縮放照片、按住拖曳位置</span>
         <div style="display: flex; gap: 8px;">
           <button class="btn btn-outline" onclick="closeModal()">取消</button>
           <button class="btn btn-primary" onclick="saveManualCrop()">套用並儲存</button>
@@ -556,7 +574,6 @@
       updateClientTag();
     }
 
-    // 批次防卡死排隊處理
     async function handleBatchUpload(files) {
       if (!files.length) return;
       const client = clients.find(x => x.id === currentClientId);
@@ -726,7 +743,7 @@
       btn.innerText = '📦 打包全部下載 (ZIP)';
     }
 
-    // 步驟 3：微調核心 (2 條 Y、2 條 X、旋轉與頭身標準化)
+    // 微調邏輯
     const mCanvas = document.getElementById('cropCanvas');
     const mCtx = mCanvas.getContext('2d');
     const stage = document.getElementById('cropStage');
@@ -766,8 +783,10 @@
       lineX1.style.left = activeItem.x1 + 'px';
       lineX2.style.left = activeItem.x2 + 'px';
 
+      // 嚴格以 4 條線框出的五官範圍計算比例
       const headHeight = Math.abs(activeItem.y2 - activeItem.y1);
       const headPct = Math.round((headHeight / activeItem.targetH) * 100);
+
       const faceWidth = Math.abs(activeItem.x2 - activeItem.x1);
       const facePct = Math.round((faceWidth / activeItem.targetW) * 100);
 
@@ -879,3 +898,5 @@
   </script>
 </body>
 </html>
+
+```
